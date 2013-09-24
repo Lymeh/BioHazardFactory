@@ -1,5 +1,6 @@
 package lymeh.naturalchimie.game
 {	
+	import flash.geom.Point;
 	import flash.utils.getTimer;
 	
 	import lymeh.naturalchimie.Constants;
@@ -18,8 +19,13 @@ package lymeh.naturalchimie.game
 	
 	public class GameScreen extends Sprite
 	{
-		//time under which the game consider you want to rotate the current pieces
+		//time under which the game consider you want to rotate the current pieces (in ms)
 		private const TIME_TOUCH_ROTATE:int = 250;
+		// time minimum inter 2 move interpretation (when the touch is moving)
+		private const TIME_INTER_MOVE_INTERPRETATION:int = 100;
+		
+		// minimum distance needed to be considered as a drop gesture
+		private const MINIMAL_DROP_DISTANCE:int = 30;
 		
 		private const TOUCH_PHASE_INACTIVE:int = 0;
 		private const TOUCH_PHASE_BEGAN:int = 1;
@@ -36,7 +42,9 @@ package lymeh.naturalchimie.game
 		private var _elementFactory:ElementFactory;
 		
 		private var _touchPhase:int;
-		private var _touchStartTime:int
+		private var _touchStartTime:int;
+		private var _lastMoveInterpretationTime:int;
+		private var _touchStartPosition:Point;
 		
 		// TO DO : create his personnal juggler
 		private var juggler:Juggler;
@@ -90,6 +98,7 @@ package lymeh.naturalchimie.game
 			addNextArrivalGroup();
 			
 			addTouchListener();
+			_touchStartPosition = new Point();
 		}
 		
 		private function addTouchListener():void
@@ -107,6 +116,8 @@ package lymeh.naturalchimie.game
 				if (touch)
 				{
 					_touchStartTime = getTimer();
+					_touchStartPosition.x = touch.globalX;
+					_touchStartPosition.y = touch.globalY;
 					_touchPhase = TOUCH_PHASE_BEGAN;
 				}
 			}
@@ -115,14 +126,15 @@ package lymeh.naturalchimie.game
 				touch = event.getTouch(this, TouchPhase.MOVED);
 				if (touch)
 				{
-					handleTouchMoved();
+					_touchPhase = TOUCH_PHASE_MOVE;
+					handleTouchMoved(touch.globalX, touch.globalY);
 				}
 				else
 				{
 					touch = event.getTouch(this, TouchPhase.ENDED);
 					if (touch)
 					{
-						handleTouchEnded();
+						handleTouchEnded(new Point(touch.globalX, touch.globalY));
 					}
 				}
 			}
@@ -131,28 +143,82 @@ package lymeh.naturalchimie.game
 				touch = event.getTouch(this, TouchPhase.ENDED);
 				if (touch)
 				{
-					handleTouchEnded();
+					handleTouchEnded(new Point(touch.globalX, touch.globalY));
 				}
 				else
 				{
-					handleTouchMoved();
+					touch = event.getTouch(this, TouchPhase.MOVED);
+					handleTouchMoved(touch.globalX, touch.globalY);
 				}
 			}
 		}
 		
-		private function handleTouchMoved():void
+		private function handleTouchMoved(currentGlobalX:int, currentGlobalY:int):void
 		{
-			_touchPhase = TOUCH_PHASE_MOVE;
+			var time:int = getTimer() - _lastMoveInterpretationTime;
+			if (time > TIME_INTER_MOVE_INTERPRETATION)
+			{
+				if (_touchStartPosition.y < currentGlobalY - MINIMAL_DROP_DISTANCE)
+				{
+					var yDistance:int = _touchStartPosition.y - currentGlobalY;
+					if (yDistance < 0)
+						yDistance *= -1;
+					// to be sure the vertical distance need to be at least twice the horizontal distance. 
+					var xDistance:int = currentGlobalX - _touchStartPosition.x;
+					if (xDistance < 0)
+						xDistance *= -1;
+					if (yDistance > xDistance*2)
+					{
+						dropElement();
+						removeEventListener(TouchEvent.TOUCH, touchHandler);
+					}
+					
+				}
+				_lastMoveInterpretationTime = getTimer();
+			}
 		}
 		
-		private function handleTouchEnded():void
+		private function handleTouchEnded(endGlobalPos:Point):void
 		{
 			var time:int = getTimer() - _touchStartTime;
 			if (time < TIME_TOUCH_ROTATE)
 			{
-				_grid.rotateElement();
+				var distance:int = Point.distance(endGlobalPos, _touchStartPosition);
+				if (distance < 100)
+					_grid.rotateElement();
+				else
+				{
+					// TO DO : check that =S + refactor with the touchMoveHandler
+					if (_touchStartPosition.y < endGlobalPos.y - MINIMAL_DROP_DISTANCE)
+					{
+						var yDistance:int = _touchStartPosition.y - endGlobalPos.y;
+						if (yDistance < 0)
+							yDistance *= -1;
+						// to be sure the vertical distance need to be at least twice the horizontal distance. 
+						var xDistance:int = endGlobalPos.x - _touchStartPosition.x;
+						if (xDistance < 0)
+							xDistance *= -1;
+						if (yDistance > xDistance*2)
+						{
+							dropElement();
+							removeEventListener(TouchEvent.TOUCH, touchHandler);
+						}
+					}
+				}
 			}
 			_touchPhase = TOUCH_PHASE_INACTIVE;
+		}
+		
+		private function dropElement():void
+		{
+			_grid.dropElement();
+			_grid.addEventListener(Event.COMPLETE, dropCompleteHandler);
+		}
+		
+		private function dropCompleteHandler(event:Event):void
+		{
+			addNextArrivalGroup();
+			addTouchListener();
 		}
 		
 		private function addNextArrivalGroup():void
