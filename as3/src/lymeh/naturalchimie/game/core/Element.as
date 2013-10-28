@@ -52,6 +52,14 @@ package lymeh.naturalchimie.game.core
 			addChild(_quad);
 		}
 		
+		public function levelUp():void
+		{
+			_level++;
+			removeChild(_quad);
+			_quad = new Quad(Grid.CASE_SIZE - 2, Grid.CASE_SIZE-2, COLOR_BY_LEVEL[_level]);
+			addChild(_quad);
+		}
+		
 		public function setPosition(x:int, y:int):void
 		{
 			_position.x = x;

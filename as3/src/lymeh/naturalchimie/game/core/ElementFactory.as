@@ -18,8 +18,20 @@ package lymeh.naturalchimie.game.core
 		public function getNew(elementLevel:int, elementPosX:int, elementPosY:int):Element
 		{
 			var element:Element = new Element();
+			// TO DO use the object pooling
 			element.init(elementLevel, new Point(elementPosX, elementPosY));
 			return element;
+		}
+		
+		public function getNewList():Vector.<Element>
+		{
+			// TO DO use the object pooling
+			return new Vector.<Element>;
+		}
+		
+		public function recycleList(elementList:Vector.<Element>):void
+		{
+			// TO DO code this
 		}
 	}
 }

@@ -26,6 +26,7 @@ package lymeh.naturalchimie.game
 		
 		// minimum distance needed to be considered as a drop gesture
 		private const MINIMAL_DROP_DISTANCE:int = 30;
+		private const MINIMAL_MOVE_DISTANCE:int = 30;
 		
 		private const TOUCH_PHASE_INACTIVE:int = 0;
 		private const TOUCH_PHASE_BEGAN:int = 1;
@@ -37,14 +38,17 @@ package lymeh.naturalchimie.game
 		
 		private var _grid:Grid;
 		
-		private var _highestElementBuild:int;
+		private var _highestElementBuilt:int;
 		
 		private var _elementFactory:ElementFactory;
 		
+		// Handle the gesture interaction
 		private var _touchPhase:int;
 		private var _touchStartTime:int;
 		private var _lastMoveInterpretationTime:int;
 		private var _touchStartPosition:Point;
+		// true if one movement has been done between the TouchPhase.BEGAN and TouchPhase.ENDED
+		private var _hasMoved:Boolean;
 		
 		// TO DO : create his personnal juggler
 		private var juggler:Juggler;
@@ -94,7 +98,7 @@ package lymeh.naturalchimie.game
 			addChild(_grid);
 			_grid.x = Constants.STAGE_WIDTH / 2 - _grid.width/2;
 			_grid.y = Constants.STAGE_HEIGHT / 2 - _grid.height/2;
-			_highestElementBuild = Element.LEVEL_2;
+			_highestElementBuilt = Element.LEVEL_2;
 			addNextArrivalGroup();
 			
 			addTouchListener();
@@ -119,6 +123,7 @@ package lymeh.naturalchimie.game
 					_touchStartPosition.x = touch.globalX;
 					_touchStartPosition.y = touch.globalY;
 					_touchPhase = TOUCH_PHASE_BEGAN;
+					_hasMoved = false;
 				}
 			}
 			else if (_touchPhase == TOUCH_PHASE_BEGAN)
@@ -148,6 +153,8 @@ package lymeh.naturalchimie.game
 				else
 				{
 					touch = event.getTouch(this, TouchPhase.MOVED);
+					if (!touch)
+						throw new Error ("Strange error, there is no moved neither ended but we are in the MOVE state");
 					handleTouchMoved(touch.globalX, touch.globalY);
 				}
 			}
@@ -158,22 +165,39 @@ package lymeh.naturalchimie.game
 			var time:int = getTimer() - _lastMoveInterpretationTime;
 			if (time > TIME_INTER_MOVE_INTERPRETATION)
 			{
+				var yDistance:int = _touchStartPosition.y - currentGlobalY;
+				if (yDistance < 0)
+					yDistance *= -1;
+				var xDistance:int = currentGlobalX - _touchStartPosition.x;
+				if (xDistance < 0)
+					xDistance *= -1;
+				//trace ("touch moved : xDistance="+xDistance+"  yDistance="+yDistance);
 				if (_touchStartPosition.y < currentGlobalY - MINIMAL_DROP_DISTANCE)
-				{
-					var yDistance:int = _touchStartPosition.y - currentGlobalY;
-					if (yDistance < 0)
-						yDistance *= -1;
-					// to be sure the vertical distance need to be at least twice the horizontal distance. 
-					var xDistance:int = currentGlobalX - _touchStartPosition.x;
-					if (xDistance < 0)
-						xDistance *= -1;
+				{	
+					// to be sure the vertical distance need to be at least twice the horizontal distance. 	
 					if (yDistance > xDistance*2)
 					{
 						dropElement();
 						removeEventListener(TouchEvent.TOUCH, touchHandler);
 					}
-					
 				}
+				else if (xDistance > MINIMAL_MOVE_DISTANCE)
+				{
+					if (currentGlobalX > _touchStartPosition.x)
+					{
+						// move to the right
+						_grid.moveArrivalElement(1);
+						_hasMoved = true;
+					}
+					else
+					{
+						// move to the left
+						_grid.moveArrivalElement(-1);
+						_hasMoved = true;
+					}
+					_touchStartPosition.setTo(currentGlobalX, currentGlobalY);
+				}
+				
 				_lastMoveInterpretationTime = getTimer();
 			}
 		}
@@ -184,7 +208,7 @@ package lymeh.naturalchimie.game
 			if (time < TIME_TOUCH_ROTATE)
 			{
 				var distance:int = Point.distance(endGlobalPos, _touchStartPosition);
-				if (distance < 100)
+				if (distance < 100 && !_hasMoved)
 					_grid.rotateElement();
 				else
 				{
@@ -234,7 +258,7 @@ package lymeh.naturalchimie.game
 		
 		private function getNextElementLevel():int
 		{
-			if (_probabilityElementListHighestLevel < _highestElementBuild)
+			if (_probabilityElementListHighestLevel < _highestElementBuilt)
 			{
 				updateProbabilityElementList();
 			}
@@ -249,13 +273,13 @@ package lymeh.naturalchimie.game
 			
 			// count the total probability for the currently created element
 			var totalProba:int = 0;
-			for (var level:int = 0; level<=_highestElementBuild; level++)
+			for (var level:int = 0; level<=_highestElementBuilt; level++)
 			{
 				totalProba += Element.PROBABILITY_BY_LEVEL[level];
 			}
 			
 			var numElement:int;
-			for (level=0; level <= _highestElementBuild; level++)
+			for (level=0; level <= _highestElementBuilt; level++)
 			{
 				numElement = Element.PROBABILITY_BY_LEVEL[level] / totalProba * 100;
 				trace (numElement+" element of level "+level);
@@ -277,7 +301,7 @@ package lymeh.naturalchimie.game
 			}
 			
 			// update the highestLevel of the probability list to don't update it on each request
-			_probabilityElementListHighestLevel = _highestElementBuild;
+			_probabilityElementListHighestLevel = _highestElementBuilt;
 		}
 		
 		/**

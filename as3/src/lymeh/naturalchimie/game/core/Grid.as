@@ -1,5 +1,7 @@
 package lymeh.naturalchimie.game.core
 {	
+	import flash.geom.Point;
+	
 	import starling.animation.Transitions;
 	import starling.animation.Tween;
 	import starling.core.Starling;
@@ -16,8 +18,12 @@ package lymeh.naturalchimie.game.core
 		
 		public static const GRID_THRESHOLD:int = 7;
 		
+		private const FUSION_TWEEN_DURATION:Number = 0.3;
+		private const MOVE_TWEEN_DURATION:Number = 0.2;
+		
 		private var _grid:Vector.<Vector.<Element>>;
 		private var _arrivalGroup:ArrivalGroup;
+		private var _lastMovedElement:Vector.<Element>;
 		
 		public function Grid()
 		{
@@ -32,6 +38,7 @@ package lymeh.naturalchimie.game.core
 			{
 				_grid[i] = new Vector.<Element>(GRID_HEIGHT, true);
 			}
+			_lastMovedElement = new Vector.<Element>();
 		}
 		
 		public function addNewArrivalGroup(arrivalGroup:ArrivalGroup):void
@@ -66,7 +73,6 @@ package lymeh.naturalchimie.game.core
 		{
 			if (_arrivalGroup != null)
 			{
-				trace ("DROP");
 				var numElement:int = _arrivalGroup.getSize();
 				var element:Element;
 				var dropRowIndex:int;
@@ -84,9 +90,62 @@ package lymeh.naturalchimie.game.core
 					if (!longestTween || longestTween.totalTime < tween.totalTime)
 						longestTween = tween;
 					Starling.juggler.add(tween);
+					_lastMovedElement.push(element);
 				}
 				longestTween.onComplete = dropComplete;
 				_arrivalGroup = null;
+			}
+		}
+		
+		/**
+		 *	Make fall all elements  
+		 * 
+		 */		
+		private function handleElementFall():void
+		{
+			var element:Element;
+			var offset:int;
+			var elementToMove:Vector.<Element> = new Vector.<Element>();
+			for (var x:int = 0; x<GRID_WIDTH; x++)
+			{
+				offset = 0;
+				for (var y:int = GRID_HEIGHT-1; y>-1; y--)
+				{
+					element = _grid[x][y];
+					if (!element)
+					{
+						offset++;
+					}
+					else
+					{
+						if (offset>0)
+						{
+							element.setPosition(element.getPosition().x, element.getPosition().y+offset);
+							_grid[x][y] = null;
+							_grid[x][y+offset] = element;
+							elementToMove.push(element);
+						}
+					}
+				}
+			}
+			moveElement(elementToMove);
+		}
+		
+		/**
+		 * Deplace the element to the left or the right (1 => right, -1 => left)  
+		 * @param xOffset
+		 * 
+		 */		
+		public function moveArrivalElement(xOffset:int):void
+		{
+			if (_arrivalGroup.getLeft() + xOffset >= 0 && _arrivalGroup.getRight() + xOffset < GRID_WIDTH)
+			{
+				_arrivalGroup.move(xOffset);
+				moveElement(_arrivalGroup.getElementList());
+			}
+			else
+			{
+				// could be good to do a little bounce animation to show that you can't go this way.
 			}
 		}
 		
@@ -95,6 +154,7 @@ package lymeh.naturalchimie.game.core
 			if (!checkForCombo())
 			{
 				dispatchEventWith(Event.COMPLETE);
+				_lastMovedElement.splice(0, _lastMovedElement.length);
 			}
 		}
 		
@@ -105,9 +165,166 @@ package lymeh.naturalchimie.game.core
 		 */		
 		private function checkForCombo():Boolean
 		{
+			var numElementToCheck:int = _lastMovedElement.length;
+			var element:Element;
+			
+			for (var i:int=0; i<numElementToCheck; i++)
+			{
+				element = _lastMovedElement[i];
+				checkForElementCombo(element);
+			}
 			return false;
 		}
 		
+		private function checkForElementCombo(element:Element):void
+		{
+			var checkedElement:Vector.<Element> = new Vector.<Element>;
+			var fusionGroup:FusionGroup = new FusionGroup(null);
+			fusionGroup.addElement(element);
+			checkedElement.push(element);
+			checkNeighbourghFusion(element, fusionGroup, checkedElement);
+			if (fusionGroup.getSize() > 2)
+			{
+				//trace ("there is a combo of "+fusionGroup.getSize()+" elements of level "+fusionGroup.getLevel());
+				executeGroupFusion(fusionGroup);
+			}
+		}
+		
+		private function executeGroupFusion(fusionGroup:FusionGroup):void
+		{
+			var lowestElement:Element = getLowestElement(fusionGroup);
+			var numElement:int = fusionGroup.getSize();
+			var element:Element;
+			var tween:Tween;
+			for (var i:int = 0; i<numElement; i++)
+			{
+				element = fusionGroup.getElementList()[i];
+				if (element !== lowestElement)
+				{
+					_grid[element.getPosition().x][element.getPosition().y] = null;
+					tween = new Tween(element, FUSION_TWEEN_DURATION, Transitions.EASE_OUT);
+					tween.moveTo(lowestElement.getPosition().x * CASE_SIZE, lowestElement.getPosition().y * CASE_SIZE);
+					tween.onComplete = removeElement;
+					tween.onCompleteArgs = [element];
+					Starling.juggler.add(tween);
+				}
+				else
+				{
+					tween = new Tween(element, FUSION_TWEEN_DURATION, Transitions.EASE_OUT);
+					tween.onComplete = fusionComplete;
+					tween.onCompleteArgs = [element];
+					Starling.juggler.add(tween);
+				}
+			}
+		}
+		
+		private function fusionComplete(element:Element):void
+		{
+			element.levelUp();
+			handleElementFall();
+		}
+		
+		/**
+		 * Remove an element from the grid 
+		 * @param element	The element to remove (it must be already removed from the grid)
+		 * 
+		 */		
+		private function removeElement(element:Element):void
+		{
+			//_grid[element.getPosition().x][element.getPosition().y] = null;
+			removeChild(element);
+		}
+		
+		private function getLowestElement(fusionGroup:FusionGroup):Element
+		{
+			var lowestElement:Vector.<Element> = new Vector.<Element>();
+			var elementList:Vector.<Element> = fusionGroup.getElementList();
+			var numElement:int = elementList.length;
+			var element:Element;
+			var lowestElementIndex:int = 0;
+			for (var i:int = 0; i<numElement; i++)
+			{
+				element = elementList[i];
+				if (element.getPosition().y >= lowestElementIndex)
+				{
+					if (element.getPosition().y > lowestElementIndex)
+					{
+						lowestElementIndex = element.getPosition().y;
+						lowestElement.splice(0, lowestElement.length);
+					}
+					lowestElement.push(element);
+				}
+			}
+			
+			// if several elements get the one the most at left;
+			if (lowestElement.length>1)
+			{
+				numElement = lowestElement.length;
+				lowestElementIndex = GRID_WIDTH;
+				var lefterElement:Element; // bad name :p
+				for (i=0; i<numElement; i++)
+				{
+					element = lowestElement[i];
+					if (element.getPosition().x < lowestElementIndex)
+					{
+						lowestElementIndex = element.getPosition().x;
+						lefterElement = element;
+					}
+				}
+				return lefterElement;
+			}
+			else
+			{
+				return lowestElement[0];
+			}
+		}
+		
+		/**
+		 * Check for element with the same level which can be fusionned 
+		 * @param element	The basic element
+		 * @param fusionGroup	The fusion group to add the neighbourgh with the same level
+		 * @param checkedElementList	The element already checked to avoid double addition
+		 * 
+		 */		
+		private function checkNeighbourghFusion(element:Element, fusionGroup:FusionGroup, checkedElementList:Vector.<Element>):void
+		{
+			var way:Point = new Point(0,1);
+			checkForFusion(element, way, fusionGroup, checkedElementList);
+			way.setTo(0, -1);
+			checkForFusion(element, way, fusionGroup, checkedElementList);
+			way.setTo(1, 0);
+			checkForFusion(element, way, fusionGroup, checkedElementList);
+			way.setTo(-1, 0);
+			checkForFusion(element, way, fusionGroup, checkedElementList);
+		}
+		
+		private function checkForFusion(element:Element, way:Point, fusionGroup:FusionGroup, checkedElementList:Vector.<Element>):void
+		{
+			var elementPosition:Point = way.add(element.getPosition());
+			if (elementPosition.x > 0 && elementPosition.x < GRID_WIDTH && elementPosition.y > (GRID_HEIGHT - GRID_THRESHOLD -1) && elementPosition.y < GRID_HEIGHT)
+			{
+				// check if element is on th grid
+				var testedElement:Element = _grid[elementPosition.x][elementPosition.y];
+				if (testedElement != null)
+				{
+					// check if not already checked
+					if (checkedElementList.indexOf(testedElement) == -1)
+					{
+						checkedElementList.push(testedElement);
+						// compare level
+						if (testedElement.getLevel() == fusionGroup.getLevel())
+						{
+							fusionGroup.addElement(testedElement);
+							checkNeighbourghFusion(testedElement, fusionGroup, checkedElementList);
+						}
+					}
+				}
+			}
+		}
+		
+		 /**
+		  *	 Return the lowest empty index of a column 
+		  */
 		private function getDropIndex(columnIndex:int):int
 		{
 			for (var i:int = 0; i< GRID_HEIGHT; i++)
@@ -120,13 +337,19 @@ package lymeh.naturalchimie.game.core
 			return GRID_HEIGHT-1;
 		}
 		
-		public function moveElement(elementList:Vector.<Element>):void
+		private function moveElement(elementList:Vector.<Element>):void
 		{
 			var tween:Tween;
+			var distance:Number;
+			var from:Point = new Point();
+			var to:Point = new Point();
 			for each (var element:Element in elementList)
 			{
-				tween = new Tween(element, 0.2, Transitions.EASE_OUT);
-				tween.moveTo(element.getPosition().x * CASE_SIZE, element.getPosition().y * CASE_SIZE);
+				from.setTo(element.x, element.y);
+				to.setTo(element.getPosition().x * CASE_SIZE, element.getPosition().y * CASE_SIZE);
+				distance = Point.distance(from, to);
+				tween = new Tween(element, distance/CASE_SIZE*MOVE_TWEEN_DURATION, Transitions.EASE_OUT);
+				tween.moveTo(to.x, to.y);
 				Starling.juggler.add(tween);
 			}
 		}
