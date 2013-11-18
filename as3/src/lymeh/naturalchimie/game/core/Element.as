@@ -8,7 +8,7 @@ package lymeh.naturalchimie.game.core
 	
 	public class Element extends Sprite
 	{
-		private const COLOR_BY_LEVEL:Vector.<int> = new <int>[Color.GREEN, Color.YELLOW, Color.RED, Color.PURPLE, Color.FUCHSIA, Color.LIME, Color.MAROON, Color.TEAL, Color.BLUE, Color.GRAY, Color.BLACK, Color.NAVY];
+		private const COLOR_BY_LEVEL:Vector.<int> = new <int>[Color.MAROON, Color.RED, 0xFF6600, Color.YELLOW, Color.LIME, Color.GREEN, Color.TEAL, Color.BLUE, Color.NAVY, Color.PURPLE, Color.FUCHSIA, Color.GRAY, Color.BLACK];
 		
 		public static const LEVEL_0:int = 0;
 		public static const LEVEL_1:int = 1;
@@ -22,6 +22,8 @@ package lymeh.naturalchimie.game.core
 		public static const LEVEL_9:int = 9;
 		public static const LEVEL_10:int = 10;
 		public static const LEVEL_11:int = 11;
+		
+		public static const MAX_LEVEL:int = LEVEL_11;
 		
 		/**
 		 * Appearence probability for each element (in %) 
@@ -54,6 +56,8 @@ package lymeh.naturalchimie.game.core
 		
 		public function levelUp():void
 		{
+			if (_level == MAX_LEVEL)
+				return;
 			_level++;
 			removeChild(_quad);
 			_quad = new Quad(Grid.CASE_SIZE - 2, Grid.CASE_SIZE-2, COLOR_BY_LEVEL[_level]);

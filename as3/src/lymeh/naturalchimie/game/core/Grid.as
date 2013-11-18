@@ -11,6 +11,8 @@ package lymeh.naturalchimie.game.core
 	
 	public class Grid extends Sprite
 	{
+		public static const FUSION:String = "fusion";
+		
 		public static const CASE_SIZE:int = 35;
 		
 		public static const GRID_WIDTH:int = 6;
@@ -24,6 +26,8 @@ package lymeh.naturalchimie.game.core
 		private var _grid:Vector.<Vector.<Element>>;
 		private var _arrivalGroup:ArrivalGroup;
 		private var _lastMovedElement:Vector.<Element>;
+		
+		private var _numActiveFusion:int;
 		
 		public function Grid()
 		{
@@ -65,7 +69,7 @@ package lymeh.naturalchimie.game.core
 			if (_arrivalGroup != null)
 			{
 				_arrivalGroup.rotate();
-				moveElement(_arrivalGroup.getElementList());
+				moveElement(_arrivalGroup.getElementList(), false);
 			}
 		}
 		
@@ -128,7 +132,14 @@ package lymeh.naturalchimie.game.core
 					}
 				}
 			}
-			moveElement(elementToMove);
+			if (elementToMove.length>0)
+			{
+				moveElement(elementToMove, true, dropComplete);				
+			}
+			else
+			{
+				dropComplete();
+			}
 		}
 		
 		/**
@@ -141,7 +152,7 @@ package lymeh.naturalchimie.game.core
 			if (_arrivalGroup.getLeft() + xOffset >= 0 && _arrivalGroup.getRight() + xOffset < GRID_WIDTH)
 			{
 				_arrivalGroup.move(xOffset);
-				moveElement(_arrivalGroup.getElementList());
+				moveElement(_arrivalGroup.getElementList(), false);
 			}
 			else
 			{
@@ -153,7 +164,11 @@ package lymeh.naturalchimie.game.core
 		{
 			if (!checkForCombo())
 			{
+				_lastMovedElement.splice(0, _lastMovedElement.length);
 				dispatchEventWith(Event.COMPLETE);
+			}
+			else
+			{
 				_lastMovedElement.splice(0, _lastMovedElement.length);
 			}
 		}
@@ -167,31 +182,40 @@ package lymeh.naturalchimie.game.core
 		{
 			var numElementToCheck:int = _lastMovedElement.length;
 			var element:Element;
-			
+			var hasCombo:Boolean;
 			for (var i:int=0; i<numElementToCheck; i++)
 			{
 				element = _lastMovedElement[i];
-				checkForElementCombo(element);
+				if (checkForElementCombo(element))
+				{
+					hasCombo = true;
+				}
 			}
-			return false;
+			return hasCombo;
 		}
 		
-		private function checkForElementCombo(element:Element):void
+		private function checkForElementCombo(element:Element):Boolean
 		{
 			var checkedElement:Vector.<Element> = new Vector.<Element>;
 			var fusionGroup:FusionGroup = new FusionGroup(null);
 			fusionGroup.addElement(element);
 			checkedElement.push(element);
 			checkNeighbourghFusion(element, fusionGroup, checkedElement);
-			if (fusionGroup.getSize() > 2)
+			if (fusionGroup.getSize() > 2 && fusionGroup.getLevel() < Element.MAX_LEVEL)
 			{
 				//trace ("there is a combo of "+fusionGroup.getSize()+" elements of level "+fusionGroup.getLevel());
 				executeGroupFusion(fusionGroup);
+				return true;
+			}
+			else
+			{
+				return false;
 			}
 		}
 		
 		private function executeGroupFusion(fusionGroup:FusionGroup):void
 		{
+			_numActiveFusion++;
 			var lowestElement:Element = getLowestElement(fusionGroup);
 			var numElement:int = fusionGroup.getSize();
 			var element:Element;
@@ -221,7 +245,15 @@ package lymeh.naturalchimie.game.core
 		private function fusionComplete(element:Element):void
 		{
 			element.levelUp();
-			handleElementFall();
+			// add to check it's neighbour
+			_lastMovedElement.push(element);
+			_numActiveFusion--;
+			if (_numActiveFusion == 0)
+			{
+				handleElementFall();	
+			}
+			
+			dispatchEventWith(Grid.FUSION, false, element.getLevel());
 		}
 		
 		/**
@@ -301,7 +333,7 @@ package lymeh.naturalchimie.game.core
 		private function checkForFusion(element:Element, way:Point, fusionGroup:FusionGroup, checkedElementList:Vector.<Element>):void
 		{
 			var elementPosition:Point = way.add(element.getPosition());
-			if (elementPosition.x > 0 && elementPosition.x < GRID_WIDTH && elementPosition.y > (GRID_HEIGHT - GRID_THRESHOLD -1) && elementPosition.y < GRID_HEIGHT)
+			if (elementPosition.x >= 0 && elementPosition.x < GRID_WIDTH && elementPosition.y > (GRID_HEIGHT - GRID_THRESHOLD -1 - 2) && elementPosition.y < GRID_HEIGHT)
 			{
 				// check if element is on th grid
 				var testedElement:Element = _grid[elementPosition.x][elementPosition.y];
@@ -337,20 +369,41 @@ package lymeh.naturalchimie.game.core
 			return GRID_HEIGHT-1;
 		}
 		
-		private function moveElement(elementList:Vector.<Element>):void
+		private function moveElement(elementList:Vector.<Element>, addToLastMoved:Boolean, onComplete:Function=null, onCompleteArgs:Array=null):void
 		{
 			var tween:Tween;
 			var distance:Number;
 			var from:Point = new Point();
 			var to:Point = new Point();
+			var longestTween:Tween;
+			var longestTweenTime:Number = 0;
+			var duration:Number = 0;
 			for each (var element:Element in elementList)
 			{
 				from.setTo(element.x, element.y);
 				to.setTo(element.getPosition().x * CASE_SIZE, element.getPosition().y * CASE_SIZE);
 				distance = Point.distance(from, to);
-				tween = new Tween(element, distance/CASE_SIZE*MOVE_TWEEN_DURATION, Transitions.EASE_OUT);
+				duration = distance/CASE_SIZE*MOVE_TWEEN_DURATION;
+				tween = new Tween(element, duration, Transitions.EASE_OUT);
+				if (duration > longestTweenTime)
+				{
+					longestTween = tween;
+					longestTweenTime = duration;
+				}
 				tween.moveTo(to.x, to.y);
 				Starling.juggler.add(tween);
+				if(addToLastMoved)
+				{
+					_lastMovedElement.push(element);
+				}
+			}
+			if (onComplete)
+			{
+				longestTween.onComplete = onComplete;
+				if (onCompleteArgs)
+				{
+					longestTween.onCompleteArgs = onCompleteArgs;
+				}
 			}
 		}
 	}

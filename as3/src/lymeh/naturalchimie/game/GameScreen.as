@@ -100,9 +100,18 @@ package lymeh.naturalchimie.game
 			_grid.y = Constants.STAGE_HEIGHT / 2 - _grid.height/2;
 			_highestElementBuilt = Element.LEVEL_2;
 			addNextArrivalGroup();
+			_grid.addEventListener(Grid.FUSION, fusionCompleteHandler);
 			
 			addTouchListener();
 			_touchStartPosition = new Point();
+		}
+		
+		private function fusionCompleteHandler(event:Event):void
+		{
+			if (event.data > _highestElementBuilt)
+			{
+				_highestElementBuilt = event.data as int;
+			}
 		}
 		
 		private function addTouchListener():void
@@ -272,6 +281,8 @@ package lymeh.naturalchimie.game
 			_probabilityElementList = new Vector.<int>();
 			
 			// count the total probability for the currently created element
+			// level1.prob + level2.prob. ... + leveln.prob
+			// where n is the highest element level created on this game
 			var totalProba:int = 0;
 			for (var level:int = 0; level<=_highestElementBuilt; level++)
 			{
