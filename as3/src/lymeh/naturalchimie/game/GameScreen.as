@@ -3,7 +3,9 @@ package lymeh.naturalchimie.game
 	import flash.geom.Point;
 	import flash.utils.getTimer;
 	
-	import lymeh.naturalchimie.Constants;
+	import lymeh.mobile.utils.SM;
+	import lymeh.naturalchimie.game.component.ElementHint;
+	import lymeh.naturalchimie.game.component.NextElement;
 	import lymeh.naturalchimie.game.core.ArrivalGroup;
 	import lymeh.naturalchimie.game.core.Element;
 	import lymeh.naturalchimie.game.core.ElementFactory;
@@ -22,11 +24,11 @@ package lymeh.naturalchimie.game
 		//time under which the game consider you want to rotate the current pieces (in ms)
 		private const TIME_TOUCH_ROTATE:int = 250;
 		// time minimum inter 2 move interpretation (when the touch is moving)
-		private const TIME_INTER_MOVE_INTERPRETATION:int = 100;
+		private const TIME_INTER_MOVE_INTERPRETATION:int = 50;
 		
 		// minimum distance needed to be considered as a drop gesture
 		private const MINIMAL_DROP_DISTANCE:int = 30;
-		private const MINIMAL_MOVE_DISTANCE:int = 30;
+		private const MINIMAL_MOVE_DISTANCE:int = 20;
 		
 		private const TOUCH_PHASE_INACTIVE:int = 0;
 		private const TOUCH_PHASE_BEGAN:int = 1;
@@ -37,6 +39,8 @@ package lymeh.naturalchimie.game
 		private var _probabilityElementListHighestLevel:int;
 		
 		private var _grid:Grid;
+		private var _elementHint:ElementHint;
+		private var _nextElement:NextElement;
 		
 		private var _highestElementBuilt:int;
 		
@@ -92,16 +96,30 @@ package lymeh.naturalchimie.game
 		private function init():void
 		{
 			// game backGround
-			addChild(new Quad(Constants.STAGE_WIDTH, Constants.STAGE_HEIGHT, 0xAAAAAA));
+			addChild(new Quad(SM.getStarlingStageWidth(), SM.getStarlingStageHeight(), 0xAAAAAA));
 			
 			_grid = new Grid();
 			addChild(_grid);
-			_grid.x = Constants.STAGE_WIDTH / 2 - _grid.width/2;
-			_grid.y = Constants.STAGE_HEIGHT / 2 - _grid.height/2;
+			_grid.x = SM.getStarlingStageWidth() / 2 - _grid.width/2;
+			_grid.y = SM.getStarlingStageHeight() / 2 - _grid.height/2;
 			_highestElementBuilt = Element.LEVEL_2;
-			addNextArrivalGroup();
 			_grid.addEventListener(Grid.FUSION, fusionCompleteHandler);
 			
+			_elementHint = new ElementHint();
+			_elementHint.x = _grid.x - _elementHint.width - 20;
+			_elementHint.y = _grid.y;
+			_elementHint.height = _grid.height;
+			_elementHint.scaleX = _elementHint.scaleY;
+			addChild(_elementHint);
+			
+			_nextElement = new NextElement();
+			_nextElement.setNextArrivalGroup(generateArrivalGroup());
+			_nextElement.x = _grid.x + _grid.width/2 - _nextElement.width/2;
+			_nextElement.y = _grid.y - 20 - _nextElement.height;
+			_nextElement.scaleX = _nextElement.scaleY = _elementHint.scaleX;
+			addChild(_nextElement);
+			
+			addNextArrivalGroup();
 			addTouchListener();
 			_touchStartPosition = new Point();
 		}
@@ -256,13 +274,26 @@ package lymeh.naturalchimie.game
 		
 		private function addNextArrivalGroup():void
 		{
+			if (_nextElement.getNextArrivalGroup())
+			{
+				_grid.addNewArrivalGroup(_nextElement.getNextArrivalGroup());
+			}
+			else
+			{
+				// first run
+				_grid.addNewArrivalGroup(generateArrivalGroup());
+			}
+			_nextElement.setNextArrivalGroup(generateArrivalGroup());
+		}
+
+		private function generateArrivalGroup():ArrivalGroup
+		{
 			var elementList:Vector.<Element> = new Vector.<Element>();
 			var elementLevel:int = getNextElementLevel();
 			elementList[0] = _elementFactory.getNew(elementLevel, 2, 1);
 			elementLevel = getNextElementLevel();
 			elementList[1] = _elementFactory.getNew(elementLevel, 3, 1);
-			var arrivalGroup:ArrivalGroup = new ArrivalGroup(elementList);
-			_grid.addNewArrivalGroup(arrivalGroup);
+			return new ArrivalGroup(elementList);
 		}
 		
 		private function getNextElementLevel():int

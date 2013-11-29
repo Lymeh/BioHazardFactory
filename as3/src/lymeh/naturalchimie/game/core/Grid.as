@@ -13,7 +13,7 @@ package lymeh.naturalchimie.game.core
 	{
 		public static const FUSION:String = "fusion";
 		
-		public static const CASE_SIZE:int = 35;
+		public static const CASE_SIZE:int = 50;
 		
 		public static const GRID_WIDTH:int = 6;
 		public static const GRID_HEIGHT:int = 10;
@@ -21,6 +21,7 @@ package lymeh.naturalchimie.game.core
 		public static const GRID_THRESHOLD:int = 7;
 		
 		private const FUSION_TWEEN_DURATION:Number = 0.3;
+		private const FUSION_TWEEN_DELAY:Number = 0.1;
 		private const MOVE_TWEEN_DURATION:Number = 0.2;
 		
 		private var _grid:Vector.<Vector.<Element>>;
@@ -227,6 +228,7 @@ package lymeh.naturalchimie.game.core
 				{
 					_grid[element.getPosition().x][element.getPosition().y] = null;
 					tween = new Tween(element, FUSION_TWEEN_DURATION, Transitions.EASE_OUT);
+					tween.delay = FUSION_TWEEN_DELAY;
 					tween.moveTo(lowestElement.getPosition().x * CASE_SIZE, lowestElement.getPosition().y * CASE_SIZE);
 					tween.onComplete = removeElement;
 					tween.onCompleteArgs = [element];
@@ -235,6 +237,7 @@ package lymeh.naturalchimie.game.core
 				else
 				{
 					tween = new Tween(element, FUSION_TWEEN_DURATION, Transitions.EASE_OUT);
+					tween.delay = FUSION_TWEEN_DELAY;
 					tween.onComplete = fusionComplete;
 					tween.onCompleteArgs = [element];
 					Starling.juggler.add(tween);

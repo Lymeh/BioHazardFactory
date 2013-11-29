@@ -8,7 +8,7 @@ package lymeh.naturalchimie.game.core
 	
 	public class Element extends Sprite
 	{
-		private const COLOR_BY_LEVEL:Vector.<int> = new <int>[Color.MAROON, Color.RED, 0xFF6600, Color.YELLOW, Color.LIME, Color.GREEN, Color.TEAL, Color.BLUE, Color.NAVY, Color.PURPLE, Color.FUCHSIA, Color.GRAY, Color.BLACK];
+		private const COLOR_BY_LEVEL:Vector.<int> = new <int>[Color.MAROON, Color.RED, 0xFF6600, Color.YELLOW, Color.LIME, Color.GREEN, Color.TEAL, Color.BLUE, Color.NAVY, Color.PURPLE, Color.FUCHSIA, Color.BLACK];
 		
 		public static const LEVEL_0:int = 0;
 		public static const LEVEL_1:int = 1;
@@ -44,8 +44,11 @@ package lymeh.naturalchimie.game.core
 		public function init(level:int, position:Point):void
 		{
 			_level = level;
-			_position.x = position.x;
-			_position.y = position.y;
+			if (position)
+			{
+				_position.x = position.x;
+				_position.y = position.y;
+			}
 			if (_quad != null)
 			{
 				removeChild(_quad);

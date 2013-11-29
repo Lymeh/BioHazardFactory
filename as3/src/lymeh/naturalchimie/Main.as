@@ -1,5 +1,6 @@
 package lymeh.naturalchimie
 {	
+	import lymeh.mobile.utils.SM;
 	import lymeh.naturalchimie.game.GameScreen;
 	
 	import starling.display.Sprite;
@@ -33,8 +34,8 @@ package lymeh.naturalchimie
 			this.addChild(progressBar);
 			*/
 			_loaderTF = new TextField(100, 100, "0%");
-			_loaderTF.x = Constants.STAGE_WIDTH/2 - _loaderTF.width/2;
-			_loaderTF.y = Constants.STAGE_HEIGHT/2 - _loaderTF.height/2;
+			_loaderTF.x = SM.getStarlingStageWidth()/2 - _loaderTF.width/2;
+			_loaderTF.y = SM.getStarlingStageHeight()/2 - _loaderTF.height/2;
 			_loaderTF.hAlign = HAlign.CENTER;
 			_loaderTF.vAlign = VAlign.CENTER;
 			addChild(_loaderTF);
