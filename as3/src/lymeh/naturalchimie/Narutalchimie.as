@@ -16,8 +16,6 @@ package lymeh.naturalchimie
 	{
 		private var _starling:Starling;
 		
-		private static var _sm:SM;
-		
 		public function Narutalchimie()
 		{
 			super();
@@ -120,11 +118,6 @@ package lymeh.naturalchimie
 			app.start(bgTexture, assets);
 			mStarling.start();
 			});*/
-		}
-		
-		public static function getSM():SM
-		{
-			return _sm;
 		}
 	}
 }

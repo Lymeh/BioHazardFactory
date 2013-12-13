@@ -2,6 +2,8 @@ package lymeh.naturalchimie.game.core
 {	
 	import flash.geom.Point;
 	
+	import lymeh.naturalchimie.game.GameScreen;
+	
 	import starling.animation.Transitions;
 	import starling.animation.Tween;
 	import starling.core.Starling;
@@ -53,6 +55,36 @@ package lymeh.naturalchimie.game.core
 			for each (var element:Element in elementList)
 			{
 				addElementOnGrid(element, false);
+			}
+		}
+		
+		public function isFull():Boolean
+		{
+			for (var i:int = 0; i<GRID_WIDTH; i++)
+			{
+				if (_grid[i][GRID_HEIGHT - GRID_THRESHOLD - 1] != null)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		public function clean():void
+		{
+			var element:Element;
+			for (var x:int = 0; x<GRID_WIDTH; x++)
+			{
+				for (var y:int = GRID_HEIGHT-1; y>-1; y--)
+				{
+					element = _grid[x][y];
+					if (element)
+					{
+						removeChild(element);
+						GameScreen.getElementFactory().recycle(element);
+					}
+					_grid[x][y] = null;
+				}
 			}
 		}
 		

@@ -1,5 +1,6 @@
 package lymeh.naturalchimie.game.component
 {
+	import lymeh.naturalchimie.game.GameScreen;
 	import lymeh.naturalchimie.game.core.ArrivalGroup;
 	import lymeh.naturalchimie.game.core.Element;
 	
@@ -25,6 +26,13 @@ package lymeh.naturalchimie.game.component
 		{
 			_backGround = new Quad(150,100, 0xCCCCCC);
 			addChild(_backGround);
+		}
+		
+		public function clean():void
+		{
+			GameScreen.getElementFactory().recycleList(_nextArrivalGroup.getElementList());
+			removeChild(_firstElement);
+			removeChild(_secondElement);
 		}
 		
 		public function setNextArrivalGroup(arrivalGroup:ArrivalGroup):void

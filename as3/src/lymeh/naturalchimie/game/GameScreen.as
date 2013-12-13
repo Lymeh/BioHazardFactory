@@ -10,6 +10,7 @@ package lymeh.naturalchimie.game
 	import lymeh.naturalchimie.game.core.Element;
 	import lymeh.naturalchimie.game.core.ElementFactory;
 	import lymeh.naturalchimie.game.core.Grid;
+	import lymeh.naturalchimie.game.ui.LootPopup;
 	
 	import starling.animation.Juggler;
 	import starling.display.Quad;
@@ -18,6 +19,7 @@ package lymeh.naturalchimie.game
 	import starling.events.Touch;
 	import starling.events.TouchEvent;
 	import starling.events.TouchPhase;
+	import starling.text.TextField;
 	
 	public class GameScreen extends Sprite
 	{
@@ -41,10 +43,11 @@ package lymeh.naturalchimie.game
 		private var _grid:Grid;
 		private var _elementHint:ElementHint;
 		private var _nextElement:NextElement;
+		private var _scoreTF:TextField;
 		
 		private var _highestElementBuilt:int;
 		
-		private var _elementFactory:ElementFactory;
+		private static var _elementFactory:ElementFactory;
 		
 		// Handle the gesture interaction
 		private var _touchPhase:int;
@@ -122,6 +125,12 @@ package lymeh.naturalchimie.game
 			addNextArrivalGroup();
 			addTouchListener();
 			_touchStartPosition = new Point();
+			
+			_scoreTF = new TextField(200, 100, "000000000", "Verdana", 50);
+			_scoreTF.x = SM.getStarlingStageWidth() - _scoreTF.width;
+			addChild(_scoreTF);
+			
+			displayGameOver();
 		}
 		
 		private function fusionCompleteHandler(event:Event):void
@@ -268,8 +277,75 @@ package lymeh.naturalchimie.game
 		
 		private function dropCompleteHandler(event:Event):void
 		{
+			if (isGameOver())
+			{
+				handleGameOver();
+			}
+			else
+			{
+				addNextArrivalGroup();
+				addTouchListener();
+			}
+		}
+		
+		private function handleGameOver():void
+		{
+			displayGameOver();
+		}
+		
+		private function displayGameOver():void
+		{
+			var gameOverClip:Sprite = new Sprite();
+			
+			var gameOverBackGround:Quad = new Quad(240, 100, 0x888888);
+			gameOverClip.addChild(gameOverBackGround);
+			
+			var gameOverTF:TextField = new TextField(160, 60, "GAME OVER", "Verdana", 50);
+			gameOverTF.autoScale = true;
+			gameOverTF.x = (gameOverBackGround.width - gameOverTF.width)/2;
+			gameOverTF.y = (gameOverBackGround.height - gameOverTF.height)/3;
+			gameOverClip.addChild(gameOverTF);
+			
+			gameOverClip.x = (SM.getStarlingStageWidth() - gameOverClip.width)/2;
+			gameOverClip.y = (SM.getStarlingStageHeight() - gameOverClip.height)/2;
+			
+			addChild(gameOverClip);
+			gameOverClip.addEventListener(TouchEvent.TOUCH, clickGameOverHandler);
+		}
+		
+		private function clickGameOverHandler(event:TouchEvent):void
+		{
+			var gameOverClip:Sprite = (event.currentTarget as Sprite)
+			if (event.getTouch(gameOverClip, TouchPhase.BEGAN))
+			{
+				gameOverClip.removeEventListener(TouchEvent.TOUCH, clickGameOverHandler);
+				removeChild(gameOverClip);
+				displayPlayerLoot();
+			}
+		}
+		
+		private function displayPlayerLoot():void
+		{
+			var lootPopup:LootPopup = new LootPopup();
+			lootPopup.x = (SM.getStarlingStageWidth() - lootPopup.width)/2;
+			lootPopup.y = (SM.getStarlingStageHeight() - lootPopup.height)/2;
+			addChild(lootPopup);
+		}
+		
+		private function restartGame():void
+		{
+			_grid.clean();
+			_nextElement.clean();
+			
+			_highestElementBuilt = Element.LEVEL_2;
+			
 			addNextArrivalGroup();
 			addTouchListener();
+		}
+		
+		private function isGameOver():Boolean
+		{
+			return _grid.isFull();
 		}
 		
 		private function addNextArrivalGroup():void
@@ -344,6 +420,11 @@ package lymeh.naturalchimie.game
 			
 			// update the highestLevel of the probability list to don't update it on each request
 			_probabilityElementListHighestLevel = _highestElementBuilt;
+		}
+		
+		public static function getElementFactory():ElementFactory
+		{
+			return _elementFactory;
 		}
 		
 		/**
