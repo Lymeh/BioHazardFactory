@@ -57,6 +57,9 @@ package lymeh.naturalchimie.game
 		// true if one movement has been done between the TouchPhase.BEGAN and TouchPhase.ENDED
 		private var _hasMoved:Boolean;
 		
+		private var _score:int = 0;
+		private var _currentCombo:Number = 1;
+		
 		// TO DO : create his personnal juggler
 		private var juggler:Juggler;
 		
@@ -107,6 +110,7 @@ package lymeh.naturalchimie.game
 			_grid.y = SM.getStarlingStageHeight() / 2 - _grid.height/2;
 			_highestElementBuilt = Element.LEVEL_2;
 			_grid.addEventListener(Grid.FUSION, fusionCompleteHandler);
+			_grid.addEventListener(Grid.COMBO, comboHandler);
 			
 			_elementHint = new ElementHint();
 			_elementHint.x = _grid.x - _elementHint.width - 20;
@@ -126,11 +130,12 @@ package lymeh.naturalchimie.game
 			addTouchListener();
 			_touchStartPosition = new Point();
 			
-			_scoreTF = new TextField(200, 100, "000000000", "Verdana", 50);
+			_scoreTF = new TextField(200, 70, "0000000", "Verdana", 50);
 			_scoreTF.x = SM.getStarlingStageWidth() - _scoreTF.width;
+			_scoreTF.autoScale = true;
 			addChild(_scoreTF);
 			
-			displayGameOver();
+			//displayGameOver();
 		}
 		
 		private function fusionCompleteHandler(event:Event):void
@@ -139,6 +144,25 @@ package lymeh.naturalchimie.game
 			{
 				_highestElementBuilt = event.data as int;
 			}
+			
+			// score handler
+			trace ("value of fusion element "+event.data.level+" : "+Math.pow(3, event.data.level));
+			var scoreDelta:int = Math.pow(3, event.data.level) * event.data.size * _currentCombo;
+			trace ("scored : "+scoreDelta);
+			_score += scoreDelta;
+			updateScore(_score);
+		}
+		
+		private function updateScore(_score:int):void
+		{
+			var scoreStr:String = _score+"";
+			
+			while(scoreStr.length < _scoreTF.text.length)
+			{
+				scoreStr = "0"+scoreStr;
+			}
+			
+			_scoreTF.text = scoreStr;
 		}
 		
 		private function addTouchListener():void
@@ -283,9 +307,20 @@ package lymeh.naturalchimie.game
 			}
 			else
 			{
+				resetCombo();
 				addNextArrivalGroup();
 				addTouchListener();
 			}
+		}
+		
+		private function resetCombo():void
+		{
+			_currentCombo = 0.9;
+		}
+		
+		private function comboHandler():void
+		{
+			_currentCombo += 0.1;
 		}
 		
 		private function handleGameOver():void
@@ -329,7 +364,34 @@ package lymeh.naturalchimie.game
 			var lootPopup:LootPopup = new LootPopup();
 			lootPopup.x = (SM.getStarlingStageWidth() - lootPopup.width)/2;
 			lootPopup.y = (SM.getStarlingStageHeight() - lootPopup.height)/2;
+			
+			var lootLevelList:Vector.<int> = new <int>[];
+			// to change wih the user data (level)
+			const numLoot:int = 5;
+			for (var i:int = 0; i<numLoot; i++)
+			{
+				lootLevelList.push(getNextElementLevel());
+			}
+			lootPopup.init(lootLevelList);
+			lootPopup.addEventListener(LootPopup.BOOK, redirectToBook);
+			lootPopup.addEventListener(LootPopup.REPLAY, askForReplay);
 			addChild(lootPopup);
+		}
+		
+		private function redirectToBook(event:Event):void
+		{
+			trace ("can't redirect now ... have to code it =D");
+		}
+		
+		private function askForReplay(event:Event):void
+		{
+			var lootPopup:LootPopup = event.target as LootPopup;
+			lootPopup.removeEventListener(LootPopup.BOOK, redirectToBook);
+			lootPopup.removeEventListener(LootPopup.REPLAY, askForReplay);
+			
+			removeChild(lootPopup);
+			lootPopup.destroy();
+			restartGame();
 		}
 		
 		private function restartGame():void
@@ -338,6 +400,7 @@ package lymeh.naturalchimie.game
 			_nextElement.clean();
 			
 			_highestElementBuilt = Element.LEVEL_2;
+			_probabilityElementListHighestLevel = _highestElementBuilt - 1;
 			
 			addNextArrivalGroup();
 			addTouchListener();
@@ -364,7 +427,7 @@ package lymeh.naturalchimie.game
 
 		private function generateArrivalGroup():ArrivalGroup
 		{
-			var elementList:Vector.<Element> = new Vector.<Element>();
+			var elementList:Vector.<Element> = GameScreen.getElementFactory().getNewList();
 			var elementLevel:int = getNextElementLevel();
 			elementList[0] = _elementFactory.getNew(elementLevel, 2, 1);
 			elementLevel = getNextElementLevel();
@@ -384,7 +447,6 @@ package lymeh.naturalchimie.game
 		
 		private function updateProbabilityElementList():void
 		{
-			trace ("UpdateProbability");
 			_probabilityElementList = new Vector.<int>();
 			
 			// count the total probability for the currently created element

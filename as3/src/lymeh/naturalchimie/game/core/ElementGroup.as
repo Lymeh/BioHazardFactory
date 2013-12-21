@@ -1,5 +1,7 @@
 package lymeh.naturalchimie.game.core
 {
+	import lymeh.naturalchimie.game.GameScreen;
+
 	public class ElementGroup
 	{
 		protected var _elementList:Vector.<Element>;
@@ -9,7 +11,7 @@ package lymeh.naturalchimie.game.core
 			_elementList = elementList;
 			if (_elementList == null)
 			{
-				_elementList = new Vector.<Element>;
+				_elementList = GameScreen.getElementFactory().getNewList();
 			}
 		}
 		

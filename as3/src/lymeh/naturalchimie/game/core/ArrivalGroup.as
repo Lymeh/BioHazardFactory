@@ -1,5 +1,7 @@
 package lymeh.naturalchimie.game.core
 {
+	import lymeh.naturalchimie.game.GameScreen;
+
 	public class ArrivalGroup extends ElementGroup
 	{
 		private var STATE_HORIZONTAL:int = 0;
@@ -105,6 +107,11 @@ package lymeh.naturalchimie.game.core
 		public function getBottom():int
 		{
 			return _bottom;
+		}
+		
+		public function clean():void
+		{
+			GameScreen.getElementFactory().recycleList(_elementList, false);
 		}
 	}
 }

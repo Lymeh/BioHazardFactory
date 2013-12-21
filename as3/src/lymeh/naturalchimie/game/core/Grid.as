@@ -14,6 +14,7 @@ package lymeh.naturalchimie.game.core
 	public class Grid extends Sprite
 	{
 		public static const FUSION:String = "fusion";
+		public static const COMBO:String = "COMBO";
 		
 		public static const CASE_SIZE:int = 50;
 		
@@ -45,7 +46,7 @@ package lymeh.naturalchimie.game.core
 			{
 				_grid[i] = new Vector.<Element>(GRID_HEIGHT, true);
 			}
-			_lastMovedElement = new Vector.<Element>();
+			_lastMovedElement = GameScreen.getElementFactory().getNewList();
 		}
 		
 		public function addNewArrivalGroup(arrivalGroup:ArrivalGroup):void
@@ -130,6 +131,7 @@ package lymeh.naturalchimie.game.core
 					_lastMovedElement.push(element);
 				}
 				longestTween.onComplete = dropComplete;
+				_arrivalGroup.clean();
 				_arrivalGroup = null;
 			}
 		}
@@ -142,7 +144,7 @@ package lymeh.naturalchimie.game.core
 		{
 			var element:Element;
 			var offset:int;
-			var elementToMove:Vector.<Element> = new Vector.<Element>();
+			var elementToMove:Vector.<Element> = GameScreen.getElementFactory().getNewList();
 			for (var x:int = 0; x<GRID_WIDTH; x++)
 			{
 				offset = 0;
@@ -167,7 +169,8 @@ package lymeh.naturalchimie.game.core
 			}
 			if (elementToMove.length>0)
 			{
-				moveElement(elementToMove, true, dropComplete);				
+				moveElement(elementToMove, true, dropComplete);
+				GameScreen.getElementFactory().recycleList(elementToMove, false);
 			}
 			else
 			{
@@ -203,6 +206,7 @@ package lymeh.naturalchimie.game.core
 			else
 			{
 				_lastMovedElement.splice(0, _lastMovedElement.length);
+				dispatchEventWith(Grid.COMBO);
 			}
 		}
 		
@@ -229,11 +233,12 @@ package lymeh.naturalchimie.game.core
 		
 		private function checkForElementCombo(element:Element):Boolean
 		{
-			var checkedElement:Vector.<Element> = new Vector.<Element>;
+			var checkedElement:Vector.<Element> = GameScreen.getElementFactory().getNewList();
 			var fusionGroup:FusionGroup = new FusionGroup(null);
 			fusionGroup.addElement(element);
 			checkedElement.push(element);
 			checkNeighbourghFusion(element, fusionGroup, checkedElement);
+			GameScreen.getElementFactory().recycleList(checkedElement, false);
 			if (fusionGroup.getSize() > 2 && fusionGroup.getLevel() < Element.MAX_LEVEL)
 			{
 				//trace ("there is a combo of "+fusionGroup.getSize()+" elements of level "+fusionGroup.getLevel());
@@ -271,13 +276,13 @@ package lymeh.naturalchimie.game.core
 					tween = new Tween(element, FUSION_TWEEN_DURATION, Transitions.EASE_OUT);
 					tween.delay = FUSION_TWEEN_DELAY;
 					tween.onComplete = fusionComplete;
-					tween.onCompleteArgs = [element];
+					tween.onCompleteArgs = [element, fusionGroup.getSize()];
 					Starling.juggler.add(tween);
 				}
 			}
 		}
 		
-		private function fusionComplete(element:Element):void
+		private function fusionComplete(element:Element, size:int):void
 		{
 			element.levelUp();
 			// add to check it's neighbour
@@ -288,7 +293,7 @@ package lymeh.naturalchimie.game.core
 				handleElementFall();	
 			}
 			
-			dispatchEventWith(Grid.FUSION, false, element.getLevel());
+			dispatchEventWith(Grid.FUSION, false, {level:element.getLevel()-1, size:size});
 		}
 		
 		/**
@@ -304,7 +309,7 @@ package lymeh.naturalchimie.game.core
 		
 		private function getLowestElement(fusionGroup:FusionGroup):Element
 		{
-			var lowestElement:Vector.<Element> = new Vector.<Element>();
+			var lowestElement:Vector.<Element> = GameScreen.getElementFactory().getNewList();
 			var elementList:Vector.<Element> = fusionGroup.getElementList();
 			var numElement:int = elementList.length;
 			var element:Element;
@@ -338,10 +343,12 @@ package lymeh.naturalchimie.game.core
 						lefterElement = element;
 					}
 				}
+				GameScreen.getElementFactory().recycleList(lowestElement, false);
 				return lefterElement;
 			}
 			else
 			{
+				GameScreen.getElementFactory().recycleList(lowestElement, false);
 				return lowestElement[0];
 			}
 		}

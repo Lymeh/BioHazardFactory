@@ -29,7 +29,7 @@ package lymeh.naturalchimie.game.core
 			return new Vector.<Element>;
 		}
 		
-		public function recycleList(elementList:Vector.<Element>):void
+		public function recycleList(elementList:Vector.<Element>, recycleElement:Boolean = true):void
 		{
 			// TO DO code this
 		}

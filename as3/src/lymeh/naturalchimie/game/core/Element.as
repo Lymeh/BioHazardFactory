@@ -28,7 +28,7 @@ package lymeh.naturalchimie.game.core
 		/**
 		 * Appearence probability for each element (in %) 
 		 */		
-		public static const PROBABILITY_BY_LEVEL:Vector.<int> = new <int>[15,15,15,10,10,8,7,7,5,5,2,1];
+		public static const PROBABILITY_BY_LEVEL:Vector.<int> = new <int>[22,22,22,8,6,5,4,3,3,2,2,1];
 		
 		private var _position:Point;
 		private var _level:int;

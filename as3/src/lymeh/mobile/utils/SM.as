@@ -94,7 +94,28 @@ package lymeh.mobile.utils
 		
 		private function setDownScaledViewPort(screenWidth:int, screenHeight:int):void
 		{
-			throw new Error("Not implement yet");
+			var widthRatio:Number = screenWidth/STANDARD_WIDTH;
+			var heightRatio:Number =  screenHeight/STANDARD_HEIGHT;
+			
+			var wantedRatio:Number;
+			_fixedGameRect = new Rectangle(0,0,STANDARD_WIDTH, STANDARD_HEIGHT);
+			
+			if (widthRatio==heightRatio)
+			{
+				_fixedGameRect = _starlingStage.clone();
+			}
+			else if (widthRatio > heightRatio)
+			{
+				wantedRatio = heightRatio;
+				_fixedGameRect.x = (screenWidth/wantedRatio - _fixedGameRect.width)/2;
+				_starlingStage = new Rectangle(0,0,_fixedGameRect.x*2+_fixedGameRect.width, _fixedGameRect.height);
+			}
+			else
+			{
+				wantedRatio = widthRatio;
+				_fixedGameRect.y = (screenHeight/wantedRatio - _fixedGameRect.height)/2;
+				_starlingStage = new Rectangle(0,0,_fixedGameRect.width, _fixedGameRect.y*2+_fixedGameRect.height);
+			}
 		}
 		
 		public static function getStarlingStageWidth():int
